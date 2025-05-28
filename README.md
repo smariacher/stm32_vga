@@ -36,16 +36,16 @@ After making sure you connected everything correctly flash the software to your 
 I have included an image blank.png that shows you where you can draw and where the image should stay black. This image already has the right resolution and you can draw where there isn't pink. Make sure that you don't include the pink part in the image you want to display, it is only to show where not to draw. Also make sure that you only use the colors available to you, the python script will show everything as fully colored when not completely black. So for example if your color is #0011FF, the script will convert that to #00FFFF. Afterwards use the image_to_c.py script to convert the image to an array. Overwrite the already existing array inside test_screen.c with your newly created array and upload everything. If you did everything correctly you should see your image on your monitor. As I have explained before, the DMA copies 8bits to the GPIOC port, so you could display more colors. For this you would have to rewrite the python script since it only converts to 1 bit per channel (in a very bad way). 
 
 ## Quick overview of how the code works
-**HSYNC**
+##### HSYNC
 The horizontal sync signal is created by using TIM1 which calls an interrupt every ~28μs. Inside the interrupt the signal is pulled low and the line_counter is increased by one. Also the DMA is updated to display the next line for every 8 lines inside the line_counter. This ensures that every line is drawn 8 times.
 
-**VSYNC**
+##### VSYNC
 The vertical sync signal is created using TIM3 which also calls an interrupt every ~17.7ms. Inside the interrupt the line_counter is set to 0 again. 
 
-**Pixel Signal**
+##### Pixel Signal
 The RGB-Signals are created by using the DMA which writes 8 bit from the frame_buffer to GPIOC. The DMA is triggered using TIM2 running at 4.8MHz.
 
-**Main loop**
+##### Main loop
 The main loop right now only waits for interrupts (__WFI()), so you can use this to draw things into the frame_buffer at your liking. Before the loop is entered everything is initialized inside the main function, the timers and the DMA get enabled/started and the array containing the test image is copied over to the frame_buffer. If you want to draw to the frame_buffer make sure that you start drawing after the backporch section. An example for this can be seen inside the for loop that copies the test_screen into the frame_buffer.
 
 Since the stm32-F091RC runs at 48MHz in my configuration, you can't really archieve the timing you need for **SVGA Signal 800 x 600 @ 56 Hz timing**. I had to play around with the timings a bit and my monitor right now thinks that it is running in **800 x 600 @ 60 Hz** mode. As stated before, there are still timing issues which I may fix in the future. The problem is that I am already close to the maximum that the chip can do so timing everything correctly is very difficult (at least for a beginner like me). 
