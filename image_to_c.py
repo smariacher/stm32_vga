@@ -9,7 +9,7 @@ def sanitize_name(filename):
 
 def convert_image_to_rgb3bit_array(image_path):
     img = Image.open(image_path).convert('RGB')
-    img = img.resize((128, 75), Image.LANCZOS)
+    img = img.resize((97, 75), Image.LANCZOS)
 
     data = []
     for y in range(img.height):

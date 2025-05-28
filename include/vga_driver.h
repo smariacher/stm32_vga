@@ -7,8 +7,11 @@
 #define H_BACKPORCH 128/8
 #define H_VISIBLE 800/8
 
+#define H_ACTUAL 97
+
 #define V_PIXEL 632/8 // Actually 625/8 
 #define V_BACKPORCH 24/8 // Actually 22/8
+#define V_VISIBLE 600/8
 
 #define TIM1_PSC 0
 #define TIM1_ARR 1279
@@ -42,4 +45,6 @@ void TIM3_init();
 void DMA_init();
 
 void init_screen();
+
+void draw_to_frame_buffer(uint8_t frame[97 * 75]);
 

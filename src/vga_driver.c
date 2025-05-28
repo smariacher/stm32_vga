@@ -157,3 +157,17 @@ void init_screen(){
     delay_cycles(10);
     TIM2->CR1 |= TIM_CR1_CEN;
 }
+
+void draw_to_frame_buffer(uint8_t frame[97 * 75]){
+    for (int v = 0; v < V_PIXEL; v++){
+        if (v < V_BACKPORCH){continue;}
+        if (v > (V_BACKPORCH + V_VISIBLE)){continue;}
+
+        for (int h = 0; h < H_PIXEL; h++){
+            if (h < H_BACKPORCH){continue;}
+            if (h > (H_BACKPORCH + H_VISIBLE)){continue;}
+            
+            frame_buffer[h + v * H_PIXEL] = frame[(h - H_BACKPORCH) + (v - V_BACKPORCH) * H_ACTUAL];
+        }
+    }
+}
