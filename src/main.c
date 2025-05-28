@@ -25,7 +25,7 @@
 
 #define RESOLUTION (V_PIXEL * H_PIXEL)
 
-uint8_t line_buffer[H_PIXEL];
+// uint8_t line_buffer[H_PIXEL];
 uint8_t frame_buffer[RESOLUTION];
 
 uint16_t current_line = 0;
@@ -73,7 +73,7 @@ void TIM1_BRK_UP_TRG_COM_IRQHandler() {
 
         // Generate low pulse on PB0
         GPIOB->BSRR = GPIO_BSRR_BR_0;
-        current_line += 1;
+        current_line += 1; // Increase line (also used as timing for pulse)
         delay_cycles(6);
         GPIOB->BSRR = GPIO_BSRR_BS_0;
         

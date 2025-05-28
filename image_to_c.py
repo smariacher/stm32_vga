@@ -25,7 +25,7 @@ def convert_image_to_rgb3bit_array(image_path):
 
 def write_c_file(images_data, output_path):
     with open(output_path, 'w') as f:
-        f.write('#include "hello_world.h"\n\n')
+        # f.write('#include "hello_world.h"\n\n')
         f.write('// Auto-generated from input folder\n')
         f.write('// Format: 1-bit per R, G, B channel packed into 3 LSBs of each byte\n\n')
 
