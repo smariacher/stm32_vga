@@ -1,0 +1,218 @@
+#include "stm32f0xx.h"
+
+uint8_t bar = 0;
+
+// Function prototypes
+void GPIO_Config(void);
+void Timer1_Config(void);
+void Timer2_Config(void);
+void Timer3_Config(void);
+
+
+void Timer2_Config(void)
+{
+    // TIM2 configuration for 28µs period on PB2 (half phase offset from TIM1)
+    // System clock = 48MHz (make sure to call your 48MHz clock config function!)
+    // Timer frequency = 48MHz / (PSC + 1) = 48MHz / 1 = 48MHz
+    // Period = (ARR + 1) / Timer frequency
+    // For 28µs: ARR = (28µs * 48MHz) - 1 = 1343
+    // Half phase offset: CNT starts at ARR/2 = 1343/2 = 671
+    
+    TIM2->CR1 = 0;           // Reset control register
+    TIM2->PSC = 0;           // Prescaler = 0 (divider = 1)
+    TIM2->ARR = 1343;        // Auto-reload value for 28µs at 48MHz
+    TIM2->CNT = 671;         // Start at half phase (14µs offset)
+    
+    // Enable update interrupt
+    TIM2->DIER |= TIM_DIER_UIE;
+    
+    // Generate update event to load prescaler
+    TIM2->EGR |= TIM_EGR_UG;
+    
+    // Reset counter to half phase after update event
+    TIM2->CNT = 671;
+};
+void delay_us(uint32_t us);
+void delay_count(uint32_t count);
+
+// Timer interrupt handlers
+void TIM1_BRK_UP_TRG_COM_IRQHandler(void);
+void TIM2_IRQHandler(void);
+void TIM3_IRQHandler(void);
+
+int main(void)
+{
+    EPL_SystemClock_Config();
+    // Enable clocks
+    RCC->AHBENR |= RCC_AHBENR_GPIOBEN;    // Enable GPIOB clock
+    RCC->APB2ENR |= RCC_APB2ENR_TIM1EN;   // Enable TIM1 clock (APB2)
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;   // Enable TIM2 clock (APB1)
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;   // Enable TIM3 clock (APB1)
+    
+    // Configure GPIO and timers
+    GPIO_Config();
+    Timer1_Config();  // For 28µs pulse on PB0
+    Timer2_Config();  // For 28µs pulse on PB2 (half phase offset)
+    Timer3_Config();  // For 17.7ms pulse on PB1
+    
+    // Enable timer interrupts in NVIC
+    NVIC_EnableIRQ(TIM1_BRK_UP_TRG_COM_IRQn);
+    NVIC_EnableIRQ(TIM2_IRQn);
+    NVIC_EnableIRQ(TIM3_IRQn);
+    NVIC_SetPriority(TIM1_BRK_UP_TRG_COM_IRQn, 1);
+    NVIC_SetPriority(TIM2_IRQn, 1);  // Same priority as TIM1
+    NVIC_SetPriority(TIM3_IRQn, 2);
+    
+    // Start timers
+    TIM1->CR1 |= TIM_CR1_CEN;  // Enable TIM1
+    TIM2->CR1 |= TIM_CR1_CEN;  // Enable TIM2  
+    TIM3->CR1 |= TIM_CR1_CEN;  // Enable TIM3
+    
+    while(1)
+    {
+        // Main loop - can do other tasks here
+        __WFI(); // Wait for interrupt (optional power saving)
+    }
+}
+
+void GPIO_Config(void)
+{
+    // Configure PB0, PB1, and PB2 as output pins
+    GPIOB->MODER &= ~(GPIO_MODER_MODER0 | GPIO_MODER_MODER1 | GPIO_MODER_MODER2);
+    GPIOB->MODER |= (GPIO_MODER_MODER0_0 | GPIO_MODER_MODER1_0 | GPIO_MODER_MODER2_0); // Set as output
+    
+    // Set output type to push-pull (default)
+    GPIOB->OTYPER &= ~(GPIO_OTYPER_OT_0 | GPIO_OTYPER_OT_1 | GPIO_OTYPER_OT_2);
+    
+    // Set speed to high
+    GPIOB->OSPEEDR |= (GPIO_OSPEEDER_OSPEEDR0 | GPIO_OSPEEDER_OSPEEDR1 | GPIO_OSPEEDER_OSPEEDR2);
+    
+    // No pull-up/pull-down
+    GPIOB->PUPDR &= ~(GPIO_PUPDR_PUPDR0 | GPIO_PUPDR_PUPDR1 | GPIO_PUPDR_PUPDR2);
+    
+    // Set initial state to HIGH
+    GPIOB->BSRR = (GPIO_BSRR_BS_0 | GPIO_BSRR_BS_1 | GPIO_BSRR_BR_2);
+}
+
+void Timer1_Config(void)
+{
+    // TIM1 configuration for 28µs period on PB0
+    // System clock = 48MHz (make sure to call your 48MHz clock config function!)
+    // Timer frequency = 48MHz / (PSC + 1) = 48MHz / 1 = 48MHz
+    // Period = (ARR + 1) / Timer frequency
+    // For 28µs: ARR = (28µs * 48MHz) - 1 = 1343
+    
+    TIM1->CR1 = 0;           // Reset control register
+    TIM1->PSC = 0;           // Prescaler = 0 (divider = 1)
+    TIM1->ARR = 1343;        // Auto-reload value for 28µs at 48MHz
+    TIM1->CNT = 0;           // Reset counter
+    
+    // Enable update interrupt
+    TIM1->DIER |= TIM_DIER_UIE;
+    
+    // Generate update event to load prescaler
+    TIM1->EGR |= TIM_EGR_UG;
+}
+
+void Timer3_Config(void)
+{
+    // TIM3 configuration for 17.7ms period on PB1
+    // System clock = 48MHz (make sure to call your 48MHz clock config function!)
+    // Use prescaler = 48 (PSC = 47), so timer runs at 1MHz
+    // ARR = 17.7ms * 1MHz = 17700 - 1 = 17699
+    
+    TIM3->CR1 = 0;           // Reset control register
+    TIM3->PSC = 47;          // Prescaler: 48MHz/48 = 1MHz
+    TIM3->ARR = 17699;       // Auto-reload value for 17.7ms
+    TIM3->CNT = 0;           // Reset counter
+    
+    // Enable update interrupt
+    TIM3->DIER |= TIM_DIER_UIE;
+    
+    // Generate update event to load prescaler
+    TIM3->EGR |= TIM_EGR_UG;
+}
+
+// Timer 1 interrupt handler - 28µs pulse on PB0
+void TIM1_BRK_UP_TRG_COM_IRQHandler(void)
+{
+    if(TIM1->SR & TIM_SR_UIF)
+    {
+        TIM1->SR &= ~TIM_SR_UIF; // Clear interrupt flag
+        
+        // Generate low pulse on PB0
+        GPIOB->BSRR = GPIO_BSRR_BR_0;  // Set PB0 low
+        delay_us(1);                    // 2µs low pulse duration
+        GPIOB->BSRR = GPIO_BSRR_BS_0;  // Set PB0 high
+    }
+}
+
+// Timer 2 interrupt handler - 28µs pulse on PB2 (half phase offset)
+void TIM2_IRQHandler(void)
+{
+    if(TIM2->SR & TIM_SR_UIF)
+    {
+        TIM2->SR &= ~TIM_SR_UIF; // Clear interrupt flag
+        
+        // Generate low pulse on PB2
+        delay_count(12);
+        GPIOB->BSRR = GPIO_BSRR_BS_2;  
+        delay_count(bar/20);
+        GPIOB->BSRR = GPIO_BSRR_BR_2;
+    }
+}
+
+// Timer 3 interrupt handler - 17.7ms pulse on PB1
+void TIM3_IRQHandler(void)
+{
+    if(TIM3->SR & TIM_SR_UIF)
+    {
+        TIM3->SR &= ~TIM_SR_UIF; // Clear interrupt flag
+        
+        // Generate low pulse on PB1
+        GPIOB->BSRR = GPIO_BSRR_BR_1;  // Set PB1 low
+        delay_us(40);                   // 0.056ms (56µs) low pulse duration  
+        GPIOB->BSRR = GPIO_BSRR_BS_1;  // Set PB1 high
+        bar++;
+        if (bar >= 400){bar = 20;}
+    }
+}
+
+// Simple microsecond delay function
+void delay_us(uint32_t us)
+{
+    // Simple delay loop - adjust multiplier based on optimization level
+    volatile uint32_t count = us * 12; // Approximate for 48MHz, no optimization
+    while(count--);
+}
+
+void delay_count(uint32_t count){
+    volatile uint32_t count2 = count;
+    while(count2--);
+}   
+
+/*
+ * Configuration Summary:
+ * 
+ * Timer 1 (TIM1):
+ * - Frequency: 48MHz (no prescaler)
+ * - Period: 28µs (ARR = 1343)
+ * - Triggers interrupt every 28µs
+ * - Generates 2µs low pulse on PB0
+ * 
+ * Timer 3 (TIM3):
+ * - Frequency: 1MHz (prescaler = 48)
+ * - Period: 17.7ms (ARR = 17699)
+ * - Triggers interrupt every 17.7ms
+ * - Generates 56µs (0.056ms) low pulse on PB1
+ * 
+ * GPIO Configuration:
+ * - PB0 and PB1 configured as high-speed push-pull outputs
+ * - Default state: HIGH
+ * - Low pulse durations: 2µs (PB0), 56µs (PB1)
+ * 
+ * Notes:
+ * - Adjust delay_us() multiplier based on compiler optimization
+ * - For more precise pulse timing, consider using hardware PWM
+ * - Timer priorities: TIM1 = 1, TIM3 = 2 (TIM1 has higher priority)
+ */
