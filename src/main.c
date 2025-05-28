@@ -241,6 +241,14 @@ int main(){
 
     uint8_t frame = 0;
 
+    delay_us(2000000);
+
+    
+    // for (int i = 0; i < 9600; i++){
+    //     frame_buffer[i + (V_BACKPORCH * H_PIXEL)] = 0;
+    //     delay_us(1000);
+    // }
+
     while(1){
         
         // // Bat animation
