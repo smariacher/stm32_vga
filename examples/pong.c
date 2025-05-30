@@ -1,8 +1,13 @@
 /* 
 PONG EXAMPLE
 
+USAGE:
 Connect two potentiometers to PA0 and PA1 to play.
-Also include number.c and numbers.h in your project
+Also include number.c and numbers.h in your project.
+
+NOTE: 
+I haven't implemented a win condition because I'm lazy
+so after any player reaches 9 points it resets to zero
 
 */
 
